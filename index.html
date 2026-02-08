@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Editor de Código Profissional - Monaco Editor, PWA, Auto-save">
+    <meta name="theme-color" content="#1e1e1e">
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <title>Lehunteerz CodeSpace - Editor Profissional</title>
+    
+    <!-- Monaco Editor (VS Code Engine) -->
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css">
+    
+    <!-- Prettier for formatting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/3.1.1/standalone.min.js"></script>
+    <!-- Prettier plugins serão carregados após o Monaco estar inicializado para evitar conflitos -->
+    
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/php.min.js"></script>
+    
+    <!-- JSZip for export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <!-- Emmet for Monaco -->
+    <script src="https://unpkg.com/emmet-monaco-es@5.3.0/dist/emmet-monaco.min.js"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+                    <h2>Lehunteerz CodeSpace</h2>
+                    <p>Carregando editor profissional...</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container" id="app-container">
+        
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fas fa-code"></i>
+                    <span class="logo-text">Lehunteerz CodeSpace</span>
+                </div>
+                <div class="project-name" id="project-name-display">
+                    <input type="text" id="project-name-input" value="Meu Projeto" />
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <div class="editor-stats">
+                    <span id="cursor-position">Ln 1, Col 1</span>
+                    <span class="separator">|</span>
+                    <span id="file-encoding">UTF-8</span>
+                    <span class="separator">|</span>
+                    <span id="current-language">HTML</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button class="header-btn" id="theme-btn" title="Alterar Tema (Ctrl+K Ctrl+T)">
+                    <i class="fas fa-palette"></i>
+                </button>
+                <button class="header-btn" id="settings-btn" title="Configurações">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="header-btn" id="format-btn" title="Formatar (Shift+Alt+F)">
+                    <i class="fas fa-align-left"></i>
+                </button>
+                <button class="header-btn header-btn-primary" id="save-btn" title="Salvar (Ctrl+S)">
+                    <i class="fas fa-save"></i>
+                    <span>Salvar</span>
+                </button>
+                <button class="header-btn header-btn-success" id="export-btn" title="Exportar Projeto">
+                    <i class="fas fa-download"></i>
+                    <span>Exportar</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="workspace">
+            
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <button class="sidebar-tab active" data-tab="files">
+                        <i class="fas fa-folder-tree"></i>
+                        <span>Arquivos</span>
+                    </button>
+                    <button class="sidebar-tab" data-tab="history">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <span>Histórico</span>
+                    </button>
+                </div>
+                
+                <!-- Files Panel -->
+                <div class="sidebar-panel active" id="files-panel">
+                    <div class="panel-toolbar">
+                        <button class="toolbar-btn" id="new-file-btn" title="Novo Arquivo (Ctrl+N)">
+                            <i class="fas fa-file-plus"></i>
+                        </button>
+                        <button class="toolbar-btn" id="new-folder-btn" title="Nova Pasta">
+                            <i class="fas fa-folder-plus"></i>
+                        </button>
+                        <button class="toolbar-btn" id="collapse-all-btn" title="Colapsar Tudo">
+                            <i class="fas fa-compress"></i>
+                        </button>
+                    </div>
+                    <div class="file-tree" id="file-tree"></div>
+                </div>
+                
+                <!-- Context Menu -->
+                <div class="context-menu" id="context-menu">
+                    <div class="context-menu-item" data-action="new-file">
+                        <i class="fas fa-file-plus"></i>
+                        <span>Novo Arquivo</span>
+                    </div>
+                    <div class="context-menu-item" data-action="new-page">
+                        <i class="fas fa-file-code"></i>
+                        <span>Nova Página HTML</span>
+                    </div>
+                    <div class="context-menu-item" data-action="new-folder">
+                        <i class="fas fa-folder-plus"></i>
+                        <span>Nova Pasta</span>
+                    </div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item" data-action="select-items">
+                        <i class="fas fa-check-square"></i>
+                        <span>Selecionar Itens</span>
+                    </div>
+                    <div class="context-menu-item" data-action="refresh">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Atualizar</span>
+                    </div>
+                    <div class="context-menu-separator" id="preview-separator" style="display: none;"></div>
+                    <div class="context-menu-item" data-action="preview-html" id="preview-html-item" style="display: none;">
+                        <i class="fas fa-eye"></i>
+                        <span>Visualizar no Preview</span>
+                    </div>
+                    <div class="context-menu-separator" id="organize-separator" style="display: none;"></div>
+                    <div class="context-menu-item" data-action="move-up" id="move-up-item" style="display: none;">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Mover para Cima</span>
+                    </div>
+                    <div class="context-menu-item" data-action="move-down" id="move-down-item" style="display: none;">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>Mover para Baixo</span>
+                    </div>
+                    <div class="context-menu-separator" id="delete-separator" style="display: none;"></div>
+                    <div class="context-menu-item context-menu-danger" data-action="delete" id="delete-item" style="display: none;">
+                        <i class="fas fa-trash"></i>
+                        <span>Deletar</span>
+                    </div>
+                </div>
+                
+                <!-- History Panel -->
+                <div class="sidebar-panel" id="history-panel">
+                    <div class="history-list" id="history-list">
+                        <div class="history-empty">
+                            <i class="fas fa-clock"></i>
+                            <p>Nenhum histórico ainda</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="resize-handle" id="sidebar-resize"></div>
+            </aside>
+
+            <!-- Editor Area -->
+            <main class="editor-area">
+                
+                <!-- Editor Tabs -->
+                <div class="editor-tabs" id="editor-tabs">
+                    <div class="tabs-container" id="tabs-container"></div>
+                    <div class="tabs-actions">
+                        <button class="tab-action-btn" id="maximize-editor-btn" title="Maximizar Editor (F11)">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button class="tab-action-btn" id="split-editor-btn" title="Dividir Editor">
+                            <i class="fas fa-columns"></i>
+                        </button>
+                        <button class="tab-action-btn" id="close-all-tabs-btn" title="Fechar Todos">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Editor Container -->
+                <div class="editor-container" id="editor-container">
+                    <div class="editor-wrapper" id="editor-wrapper">
+                        <div class="monaco-editor-container" id="monaco-editor"></div>
+                    </div>
+                    
+                    <!-- Split Editor (Optional) -->
+                    <div class="editor-wrapper hidden" id="editor-wrapper-2">
+                        <div class="monaco-editor-container" id="monaco-editor-2"></div>
+                        <div class="split-resize-handle" id="split-resize"></div>
+                    </div>
+                </div>
+
+                <!-- Bottom Panel -->
+                <div class="bottom-panel" id="bottom-panel">
+                    <div class="resize-handle-horizontal" id="bottom-resize"></div>
+                    
+                    <div class="panel-tabs">
+                        <button class="panel-tab active" data-panel="preview">
+                            <i class="fas fa-eye"></i> Visualização
+                        </button>
+                        <button class="panel-tab" data-panel="console">
+                            <i class="fas fa-terminal"></i> Console
+                            <span class="console-badge" id="console-badge">0</span>
+                        </button>
+                        <button class="panel-tab" data-panel="problems">
+                            <i class="fas fa-triangle-exclamation"></i> Problemas
+                            <span class="problems-badge" id="problems-badge">0</span>
+                        </button>
+                        
+                        <div class="panel-actions">
+                            <button class="panel-action-btn" id="clear-panel-btn" title="Limpar">
+                                <i class="fas fa-broom"></i>
+                            </button>
+                            <button class="panel-action-btn" id="maximize-panel-btn" title="Maximizar">
+                                <i class="fas fa-maximize"></i>
+                            </button>
+                            <button class="panel-action-btn" id="close-panel-btn" title="Fechar Painel">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Panel -->
+                    <div class="panel-content active" id="preview-panel">
+                        <div class="preview-toolbar">
+                            <span class="preview-file-info" id="preview-file-info" style="display: none;">
+                                <i class="fas fa-file-code"></i>
+                                <span id="preview-file-name"></span>
+                            </span>
+                            <button class="preview-btn" id="refresh-preview-btn">
+                                <i class="fas fa-rotate"></i> Atualizar
+                            </button>
+                            <button class="preview-btn" id="open-new-tab-btn">
+                                <i class="fas fa-arrow-up-right-from-square"></i> Abrir em Nova Aba
+                            </button>
+                            <button class="preview-btn" id="open-realtime-preview-btn" title="Abrir preview em tempo real em nova aba">
+                                <i class="fas fa-sync-alt"></i> Preview Tempo Real
+                            </button>
+                            <div class="preview-cache-menu">
+                                <button class="preview-btn" id="preview-cache-menu-btn" title="Opções de Cache">
+                                    <i class="fas fa-broom"></i> Limpar Cache
+                                </button>
+                                <div class="preview-cache-dropdown" id="preview-cache-dropdown">
+                                    <div class="cache-menu-item" data-action="clear-cache">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Limpar Cache do Preview</span>
+                                    </div>
+                                    <div class="cache-menu-item" data-action="clear-cookies">
+                                        <i class="fas fa-cookie"></i>
+                                        <span>Limpar Cookies e Storage</span>
+                                    </div>
+                                    <div class="cache-menu-item" data-action="clear-all">
+                                        <i class="fas fa-broom"></i>
+                                        <span>Limpar Tudo (Cache + Cookies)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="auto-refresh-toggle">
+                                <input type="checkbox" id="auto-refresh" checked />
+                                <label for="auto-refresh">Auto-refresh</label>
+                            </div>
+                        </div>
+                        <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin allow-modals"></iframe>
+                    </div>
+                    
+                    <!-- Console Panel -->
+                    <div class="panel-content" id="console-panel">
+                        <div class="console-output" id="console-output"></div>
+                    </div>
+                    
+                    <!-- Problems Panel -->
+                    <div class="panel-content" id="problems-panel">
+                        <div class="problems-list" id="problems-list">
+                            <div class="no-problems">
+                                <i class="fas fa-circle-check"></i>
+                                <p>Nenhum problema encontrado</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Theme Selector Modal -->
+    <div class="modal" id="theme-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-palette"></i> Selecionar Tema</h3>
+                <button class="modal-close" data-modal="theme-modal">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="theme-grid">
+                    <div class="theme-card" data-theme="vs-dark">
+                        <div class="theme-preview theme-preview-dark"></div>
+                        <span>Dark (Padrão)</span>
+                    </div>
+                    <div class="theme-card" data-theme="vs">
+                        <div class="theme-preview theme-preview-light"></div>
+                        <span>Light</span>
+                    </div>
+                    <div class="theme-card" data-theme="hc-black">
+                        <div class="theme-preview theme-preview-hc"></div>
+                        <span>High Contrast</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Configurações</h3>
+                <button class="modal-close" data-modal="settings-modal">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <h4>Editor</h4>
+                    <div class="setting-item">
+                        <label>
+                            <input type="number" id="font-size-setting" value="14" min="10" max="32" />
+                            Tamanho da Fonte
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="minimap-setting" checked />
+                            Mostrar Minimap
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="word-wrap-setting" />
+                            Quebra de Linha Automática
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h4>Auto-save</h4>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="autosave-setting" checked />
+                            Ativar Auto-save
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="number" id="autosave-delay-setting" value="2000" min="500" max="10000" step="500" />
+                            Intervalo (ms)
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="export-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-download"></i> Exportar Projeto</h3>
+                <button class="modal-close" data-modal="export-modal">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <button class="export-option" data-export="zip">
+                        <i class="fas fa-file-zipper"></i>
+                        <span>Arquivos ZIP</span>
+                        <small>Baixar todos os arquivos compactados</small>
+                    </button>
+                    <button class="export-option" data-export="html">
+                        <i class="fas fa-file-code"></i>
+                        <span>HTML Único</span>
+                        <small>Tudo em um único arquivo HTML</small>
+                    </button>
+                    <button class="export-option" data-export="json">
+                        <i class="fas fa-file-lines"></i>
+                        <span>Projeto JSON</span>
+                        <small>Exportar como JSON (importável)</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New File Modal -->
+    <div class="modal" id="new-file-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-plus"></i> Novo Arquivo</h3>
+                <button class="modal-close" data-modal="new-file-modal">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="file-name-input">Nome do arquivo:</label>
+                    <input type="text" id="file-name-input" placeholder="Ex: app" />
+                </div>
+                <div class="form-group">
+                    <label for="file-type-select">Tipo:</label>
+                    <select id="file-type-select">
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="js">JavaScript</option>
+                        <option value="json">JSON</option>
+                        <option value="md">Markdown</option>
+                        <option value="txt">Texto (TXT)</option>
+                        <option value="xml">XML</option>
+                        <option value="yaml">YAML</option>
+                        <option value="ts">TypeScript</option>
+                        <option value="py">Python</option>
+                        <option value="php">PHP</option>
+                        <option value="sql">SQL</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" data-modal="new-file-modal">Cancelar</button>
+                    <button class="btn btn-primary" id="create-file-btn">Criar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+        <div class="status-left">
+            <span id="connection-status">
+                <i class="fas fa-wifi"></i> Online
+            </span>
+            <span class="separator">|</span>
+            <span id="autosave-status">
+                <i class="fas fa-floppy-disk"></i> Auto-save: ON
+            </span>
+        </div>
+        <div class="status-center">
+            <span id="last-saved">Salvo há 0s</span>
+        </div>
+        <div class="status-right">
+            <span id="file-count">3 arquivos</span>
+            <span class="separator">|</span>
+            <span id="total-lines">0 linhas</span>
+        </div>
+    </footer>
+
+    <!-- Monaco Loader -->
+    <script>
+        var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.nls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.js"></script>
+    
+    <!-- Carregamento Otimizado de Plugins Prettier (carregado de forma assíncrona) -->
+    <script src="load-plugins.js" defer></script>
+    
+    <!-- Main Application Script -->
+    <script src="script.js"></script>
+    
+    <!-- Fallback: Garantir que app seja visível mesmo se houver problemas -->
+    <script>
+        // Garantir visibilidade após 1 segundo
+        setTimeout(function() {
+            var loading = document.getElementById('loading-screen');
+            var appContainer = document.getElementById('app-container');
+            
+            if (loading) {
+                loading.style.opacity = '0';
+                loading.style.visibility = 'hidden';
+                loading.style.pointerEvents = 'none';
+                loading.style.zIndex = '-1';
+                loading.style.display = 'none';
+            }
+            
+            if (appContainer) {
+                appContainer.style.opacity = '1';
+                appContainer.style.visibility = 'visible';
+                appContainer.style.display = 'flex';
+                appContainer.classList.add('loaded');
+            }
+            
+            // Tentar configurar event listeners se a função existir
+            if (typeof setupEventListeners === 'function') {
+                try {
+                    setupEventListeners();
+                } catch (e) {
+                    console.error('Erro ao configurar event listeners (fallback HTML):', e);
+                }
+            }
+        }, 1000);
+        
+        // Garantir visibilidade após 2 segundos também (fallback duplo)
+        setTimeout(function() {
+            var loading = document.getElementById('loading-screen');
+            var appContainer = document.getElementById('app-container');
+            
+            if (loading) {
+                loading.style.display = 'none';
+            }
+            
+            if (appContainer) {
+                appContainer.style.opacity = '1';
+                appContainer.style.visibility = 'visible';
+            }
+            
+            // Tentar configurar event listeners novamente
+            if (typeof setupEventListeners === 'function') {
+                try {
+                    setupEventListeners();
+                } catch (e) {
+                    console.error('Erro ao configurar event listeners (fallback HTML 2):', e);
+                }
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
