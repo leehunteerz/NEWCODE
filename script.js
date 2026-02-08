@@ -53,6 +53,9 @@ const App = {
     selectedItems: new Set(),
     selectionMode: false,
     contextMenuTarget: null,
+    contextMenuClickHandler: null,
+    contextMenuActionHandler: null,
+    contextMenuEscapeHandler: null,
     
     // Maximize states
     editorMaximized: false,
@@ -4914,31 +4917,56 @@ function setupContextMenu() {
     const contextMenu = document.getElementById('context-menu');
     if (!contextMenu) return;
     
-    // Close context menu when clicking outside
-    document.addEventListener('click', (e) => {
+    // Evitar adicionar listeners múltiplas vezes
+    if (contextMenu.dataset.setup === 'true') {
+        return; // Já foi configurado
+    }
+    contextMenu.dataset.setup = 'true';
+    
+    // Close context menu when clicking outside (usar event delegation)
+    // Remover listener antigo se existir
+    if (App.contextMenuClickHandler) {
+        document.removeEventListener('click', App.contextMenuClickHandler);
+    }
+    App.contextMenuClickHandler = (e) => {
         if (!contextMenu.contains(e.target)) {
             hideContextMenu();
         }
-    });
+    };
+    document.addEventListener('click', App.contextMenuClickHandler);
     
-    // Handle context menu actions
-    contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            const action = item.dataset.action;
+    // Handle context menu actions usando event delegation
+    // Remover listener antigo se existir
+    if (App.contextMenuActionHandler) {
+        contextMenu.removeEventListener('click', App.contextMenuActionHandler);
+    }
+    App.contextMenuActionHandler = (e) => {
+        const item = e.target.closest('.context-menu-item');
+        if (!item) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const action = item.dataset.action;
+        if (action) {
             handleContextMenuAction(action);
             hideContextMenu();
-        });
-    });
-    
-    // Close on Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            hideContextMenu();
-            if (App.selectionMode) {
-                exitSelectionMode();
-            }
         }
-    });
+    };
+    contextMenu.addEventListener('click', App.contextMenuActionHandler);
+    
+    // Close on Escape key (usar flag para evitar múltiplos listeners)
+    if (!App.contextMenuEscapeHandler) {
+        App.contextMenuEscapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                hideContextMenu();
+                if (App.selectionMode) {
+                    exitSelectionMode();
+                }
+            }
+        };
+        document.addEventListener('keydown', App.contextMenuEscapeHandler);
+    }
 }
 
 function showContextMenu(e, type, id) {
